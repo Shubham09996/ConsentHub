@@ -3,22 +3,34 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Lock, Mail, User, Briefcase, ArrowRight, CheckCircle } from 'lucide-react';
 import { Button, InputGroup, GlassCard } from '../../components/ui/PremiumComponents';
+import { authAPI } from '../../services/api';
 
 const Signup = () => {
   const navigate = useNavigate();
   const [role, setRole] = useState('owner');
   const [loading, setLoading] = useState(false);
 
-  const handleSignup = (e) => {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSignup = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API Call
-    setTimeout(() => {
-      localStorage.setItem('token', 'mock_token');
-      localStorage.setItem('role', role);
-      navigate(role === 'owner' ? '/owner/dashboard' : '/consumer/dashboard');
+    setError('');
+    try {
+      const res = await authAPI.register({ firstName, lastName, email, password, role });
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('role', res.data.role);
+      navigate(res.data.role === 'owner' ? '/owner/dashboard' : '/consumer/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Registration failed');
+      console.error('Signup error:', err);
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -54,17 +66,19 @@ const Signup = () => {
 
         <form onSubmit={handleSignup} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <InputGroup label="First Name" placeholder="John" icon={User} required />
-            <InputGroup label="Last Name" placeholder="Doe" required />
+            <InputGroup label="First Name" placeholder="John" icon={User} value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+            <InputGroup label="Last Name" placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
           </div>
           
-          <InputGroup label="Email" type="email" placeholder="you@example.com" icon={Mail} required />
-          <InputGroup label="Password" type="password" placeholder="Create a strong password" icon={Lock} required />
+          <InputGroup label="Email" type="email" placeholder="you@example.com" icon={Mail} value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <InputGroup label="Password" type="password" placeholder="Create a strong password" icon={Lock} value={password} onChange={(e) => setPassword(e.target.value)} required />
           
           <div className="flex items-start gap-2 mt-2">
             <div className="mt-0.5 text-brand-600"><CheckCircle size={16} /></div>
             <p className="text-xs text-gray-500">By creating an account, you agree to our <a href="#" className="text-brand-600 font-bold hover:underline">Terms of Service</a> and <a href="#" className="text-brand-600 font-bold hover:underline">Privacy Policy</a>.</p>
           </div>
+          {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+
 
           <Button type="submit" isLoading={loading} className="w-full py-3.5 mt-4 text-lg" icon={ArrowRight}>
             Create Account

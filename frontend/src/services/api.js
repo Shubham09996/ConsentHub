@@ -53,8 +53,17 @@ export const ownerAPI = {
 
 export const consumerAPI = {
   searchOwner: (query) => api.get(`/consumer/search?q=${query}`), // Search [cite: 29]
-  requestAccess: (ownerId) => api.post('/consumer/request', { ownerId }), // Request [cite: 30]
+  requestAccess: (ownerId, purpose) => api.post('/consumer/request', { ownerId, purpose }), // Request [cite: 30]
+  getAccessList: () => api.get('/consumer/access-list'),
   getData: (ownerId) => api.get(`/consumer/data/${ownerId}`), // View Data [cite: 31]
+  getDashboardStats: () => api.get('/consumer/dashboard-stats'),
+  getApiKey: () => api.get('/consumer/api-key'),
+};
+
+export const userAPI = {
+  getProfile: () => api.get('/user/profile'),
+  updateProfile: (data) => api.put('/user/profile', data),
+  changePassword: (data) => api.put('/user/change-password', data),
 };
 
 export default api;

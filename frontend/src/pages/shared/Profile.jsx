@@ -7,16 +7,71 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { Button, InputGroup } from '../../components/ui/PremiumComponents';
 
+import { userAPI } from '../../services/api';
+
 const Profile = () => {
   const [role, setRole] = useState('owner');
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
+  const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [passwordChange, setPasswordChange] = useState({ currentPassword: '', newPassword: '' });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
 
   useEffect(() => {
     const storedRole = localStorage.getItem('role') || 'owner';
     setRole(storedRole);
-    setFormData(storedRole === 'owner' ? ownerMockData : consumerMockData);
+    fetchProfile();
   }, []);
+
+  const fetchProfile = async () => {
+    setLoading(true);
+    try {
+      const res = await userAPI.getProfile();
+      setFormData(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to fetch profile');
+      console.error('Fetch profile error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setLoading(true);
+    try {
+      await userAPI.updateProfile(formData);
+      setIsEditing(false);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update profile');
+      console.error('Update profile error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+    if (passwordChange.newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long');
+      return;
+    }
+    setLoading(true);
+    try {
+      await userAPI.changePassword(passwordChange);
+      setPasswordSuccess('Password updated successfully!');
+      setPasswordChange({ currentPassword: '', newPassword: '' });
+    } catch (err) {
+      setPasswordError(err.response?.data?.message || 'Failed to change password');
+      console.error('Change password error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // --- Sidebar Logic ---
   const ownerMenuItems = [
@@ -30,30 +85,17 @@ const Profile = () => {
   ];
   const currentMenuItems = role === 'owner' ? ownerMenuItems : consumerMenuItems;
 
-  // --- Mock Data ---
-  const ownerMockData = {
-    firstName: 'Alex',
-    lastName: 'Johnson',
-    email: 'alex.j@example.com',
-    phone: '+1 (555) 000-1234',
-    location: 'New York, USA',
-    bio: 'Privacy advocate. Managing my digital data consents.',
-    role: 'Data Owner'
-  };
+  if (loading) {
+    return <DashboardLayout title="Loading..." subtitle="Fetching profile data..." role={role === 'owner' ? "Data Owner" : "Data Consumer"} menuItems={currentMenuItems}>
+      <div className="text-center py-20">Loading profile...</div>
+    </DashboardLayout>;
+  }
 
-  const consumerMockData = {
-    firstName: 'Sarah',
-    lastName: 'Williams',
-    email: 'tech@fintech.io',
-    phone: '+1 (555) 987-6543',
-    location: 'San Francisco, CA',
-    bio: 'Lead Developer at FinTech Corp.',
-    company: 'FinTech Corp',
-    website: 'https://fintech.io',
-    role: 'Enterprise User'
-  };
-
-  const [formData, setFormData] = useState(ownerMockData);
+  if (error) {
+    return <DashboardLayout title="Error" subtitle="Failed to load profile." role={role === 'owner' ? "Data Owner" : "Data Consumer"} menuItems={currentMenuItems}>
+      <div className="text-center py-20 text-red-500">{error}</div>
+    </DashboardLayout>;
+  }
 
   return (
     <DashboardLayout 
@@ -84,11 +126,11 @@ const Profile = () => {
                 </button>
              </div>
              <div className="text-center md:text-left">
-                <h1 className="text-2xl font-bold text-gray-900">{formData.firstName} {formData.lastName}</h1>
+                <h1 className="text-2xl font-bold text-gray-900">{formData.first_name} {formData.last_name}</h1>
                 <div className="flex items-center justify-center md:justify-start gap-2 mt-1 text-sm text-gray-500 font-medium">
                    <span className="bg-brand-50 text-brand-700 px-2 py-0.5 rounded text-xs uppercase tracking-wide font-bold">{formData.role}</span>
                    <span>•</span>
-                   <span>{formData.location}</span>
+                   <span>{formData.location || 'N/A'}</span>
                 </div>
              </div>
           </div>
@@ -97,10 +139,10 @@ const Profile = () => {
              {isEditing ? (
                 <>
                   <Button variant="secondary" onClick={() => setIsEditing(false)} icon={X}>Cancel</Button>
-                  <Button onClick={() => setIsEditing(false)} icon={Save}>Save Changes</Button>
+                  <Button onClick={handleSaveProfile} icon={Save} isLoading={loading}>Save Changes</Button>
                 </>
              ) : (
-                <Button variant="secondary" onClick={() => setIsEditing(true)}>Edit Profile</Button>
+               <Button variant="secondary" onClick={() => setIsEditing(true)} disabled={loading}>Edit Profile</Button>
              )}
           </div>
         </div>
@@ -138,10 +180,10 @@ const Profile = () => {
                              </div>
                              
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <InputGroup label="First Name" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} disabled={!isEditing} />
-                                <InputGroup label="Last Name" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} disabled={!isEditing} />
+                                <InputGroup label="First Name" value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} disabled={!isEditing} />
+                                <InputGroup label="Last Name" value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} disabled={!isEditing} />
                                 <InputGroup label="Email" value={formData.email} disabled={true} icon={Mail} className="bg-gray-50 text-gray-500 cursor-not-allowed" />
-                                <InputGroup label="Phone" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} disabled={!isEditing} icon={Phone} />
+                                <InputGroup label="Phone" value={formData.phone || ''} onChange={(e) => setFormData({...formData, phone: e.target.value})} disabled={!isEditing} icon={Phone} />
                              </div>
 
                              <div>
@@ -149,7 +191,7 @@ const Profile = () => {
                                 <textarea 
                                    className={`w-full p-4 rounded-xl border border-gray-200 outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all text-sm resize-none ${!isEditing ? 'bg-gray-50 text-gray-500' : 'bg-white'}`}
                                    rows="4"
-                                   value={formData.bio}
+                                   value={formData.bio || ''}
                                    onChange={(e) => setFormData({...formData, bio: e.target.value})}
                                    disabled={!isEditing}
                                 />
@@ -159,8 +201,8 @@ const Profile = () => {
                                 <div className="pt-8 border-t border-gray-100">
                                    <h2 className="text-lg font-bold text-gray-900 mb-6">Organization Details</h2>
                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                      <InputGroup label="Company Name" value={formData.company} icon={Building} disabled={!isEditing} />
-                                      <InputGroup label="Website" value={formData.website} icon={Globe} disabled={!isEditing} />
+                                      <InputGroup label="Company Name" value={formData.company || ''} icon={Building} onChange={(e) => setFormData({...formData, company: e.target.value})} disabled={!isEditing} />
+                                      <InputGroup label="Website" value={formData.website || ''} icon={Globe} onChange={(e) => setFormData({...formData, website: e.target.value})} disabled={!isEditing} />
                                    </div>
                                 </div>
                              )}
@@ -181,11 +223,13 @@ const Profile = () => {
 
                              <div className="bg-brand-50/50 border border-brand-100 rounded-xl p-6">
                                 <h3 className="text-sm font-bold text-brand-900 mb-4">Change Password</h3>
+                                {passwordError && <p className="text-red-500 text-sm mb-4">{passwordError}</p>}
+                                {passwordSuccess && <p className="text-green-500 text-sm mb-4">{passwordSuccess}</p>}
                                 <div className="space-y-4 max-w-md">
-                                   <InputGroup label="Current Password" type="password" placeholder="••••••••" />
-                                   <InputGroup label="New Password" type="password" placeholder="••••••••" />
+                                   <InputGroup label="Current Password" type="password" placeholder="••••••••" value={passwordChange.currentPassword} onChange={(e) => setPasswordChange({...passwordChange, currentPassword: e.target.value})} disabled={!isEditing} />
+                                   <InputGroup label="New Password" type="password" placeholder="••••••••" value={passwordChange.newPassword} onChange={(e) => setPasswordChange({...passwordChange, newPassword: e.target.value})} disabled={!isEditing} />
                                    <div className="pt-2">
-                                      <Button disabled={!isEditing}>Update Password</Button>
+                                      <Button onClick={handleChangePassword} disabled={!isEditing || loading}>Update Password</Button>
                                    </div>
                                 </div>
                              </div>

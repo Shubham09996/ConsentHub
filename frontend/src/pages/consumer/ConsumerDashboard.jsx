@@ -7,56 +7,96 @@ import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { GlassCard, Button, InputGroup, Badge } from '../../components/ui/PremiumComponents';
 
+import { consumerAPI } from '../../services/api';
+
 const ConsumerDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewData, setViewData] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all', 'active', 'pending'
+  const [dashboardStats, setDashboardStats] = useState({ activeConnections: 0, pendingRequests: 0, totalApiCalls: 0 });
+  const [accessList, setAccessList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchOwners, setSearchOwners] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [requestPurpose, setRequestPurpose] = useState('');
+  const [requestError, setRequestError] = useState('');
 
-  // Mock Data (Expanded for better UI)
-  const stats = [
-    { label: 'Active Connections', value: '08', icon: Zap, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { label: 'Pending Requests', value: '03', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-    { label: 'Total API Calls', value: '1.2k', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  ];
+  useEffect(() => {
+    fetchDashboardStats();
+    fetchAccessList();
+  }, []);
 
-  const [accessList] = useState([
-    { 
-      id: 1, 
-      name: 'Alex Doe', 
-      email: 'alex@example.com', 
-      status: 'active', 
-      expiry: '24h remaining',
-      sensitivity: 'High',
-      data: { score: 720, history: 'Clean', lastUpdated: 'Today' } 
-    },
-    { 
-      id: 2, 
-      name: 'Sarah Smith', 
-      email: 'sarah@design.co', 
-      status: 'pending', 
-      expiry: 'Waiting...',
-      sensitivity: 'Medium',
-      data: null 
-    },
-    { 
-      id: 3, 
-      name: 'Mike Ross', 
-      email: 'mike@tech.io', 
-      status: 'revoked', 
-      expiry: 'Expired',
-      sensitivity: 'Low',
-      data: null 
-    },
-    { 
-      id: 4, 
-      name: 'Emily Blunt', 
-      email: 'emily@studio.com', 
-      status: 'active', 
-      expiry: '12h remaining',
-      sensitivity: 'Medium',
-      data: { score: 680, history: 'Pending', lastUpdated: 'Yesterday' } 
-    },
-  ]);
+  const fetchDashboardStats = async () => {
+    try {
+      const res = await consumerAPI.getDashboardStats();
+      setDashboardStats(res.data);
+    } catch (err) {
+      console.error('Error fetching dashboard stats:', err);
+      setError('Failed to fetch dashboard stats');
+    }
+  };
+
+  const fetchAccessList = async () => {
+    setLoading(true);
+    try {
+      const res = await consumerAPI.getAccessList();
+      setAccessList(res.data.map(item => ({
+        id: item.id,
+        name: `${item.first_name}`,
+        email: item.email,
+        status: item.status.toLowerCase(),
+        ownerId: item.owner_id,
+        expiry: 'N/A',
+        sensitivity: 'N/A', // This would ideally come from the backend with the access list
+        data: null
+      })));
+    } catch (err) {
+      console.error('Error fetching access list:', err);
+      setError('Failed to fetch access list');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearchOwners = async () => {
+    if (!searchQuery) return;
+    try {
+      const res = await consumerAPI.searchOwner(searchQuery);
+      setSearchOwners(res.data);
+    } catch (err) {
+      console.error('Error searching owners:', err);
+    }
+  };
+
+  const handleRequestAccess = async (ownerId) => {
+    setRequestError('');
+    if (!requestPurpose) {
+      setRequestError('Purpose cannot be empty.');
+      return;
+    }
+    try {
+      await consumerAPI.requestAccess(ownerId, requestPurpose);
+      setIsSearchModalOpen(false);
+      setSearchQuery('');
+      setRequestPurpose('');
+      fetchAccessList(); // Refresh access list
+    } catch (err) {
+      setRequestError(err.response?.data?.message || 'Failed to send request');
+      console.error('Error requesting access:', err);
+    }
+  };
+
+  const handleViewData = async (item) => {
+    try {
+      const res = await consumerAPI.getData(item.ownerId);
+      setViewData({ ...item, data: res.data });
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to retrieve data.');
+      console.error('Error viewing data:', err);
+    }
+  };
 
   // Filter Logic
   const filteredList = accessList.filter(item => {
@@ -80,25 +120,9 @@ const ConsumerDashboard = () => {
         
         {/* 1. Hero Stats Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {stats.map((stat, idx) => (
-            <motion.div 
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between relative overflow-hidden group hover:shadow-md transition-shadow"
-            >
-              <div className="relative z-10">
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1">{stat.label}</p>
-                <h3 className="text-3xl font-black text-gray-900">{stat.value}</h3>
-              </div>
-              <div className={`p-4 rounded-2xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>
-                <stat.icon size={24} />
-              </div>
-              {/* Background Blob */}
-              <div className={`absolute -right-6 -bottom-6 w-24 h-24 rounded-full ${stat.bg} opacity-50 blur-2xl group-hover:opacity-100 transition-opacity`}></div>
-            </motion.div>
-          ))}
+          <StatCard label="Active Connections" value={dashboardStats.activeConnections} icon={Zap} color="text-emerald-500" bg="bg-emerald-500/10" />
+          <StatCard label="Pending Requests" value={dashboardStats.pendingRequests} icon={Clock} color="text-amber-500" bg="bg-amber-500/10" />
+          <StatCard label="Total API Calls" value={dashboardStats.totalApiCalls} icon={Activity} color="text-blue-500" bg="bg-blue-500/10" />
         </div>
 
         {/* 2. Search & Filter Bar */}
@@ -108,14 +132,15 @@ const ConsumerDashboard = () => {
             <input 
               type="text"
               placeholder="Search by name or email..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-gray-50 hover:bg-white focus:bg-white border-2 border-transparent focus:border-brand-500 rounded-xl py-3 pl-12 pr-4 outline-none transition-all font-medium text-gray-700"
             />
+            <button onClick={handleSearchOwners} className="absolute right-2 top-2 h-10 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-semibold">Search</button>
           </div>
           
           <div className="flex bg-gray-100 p-1.5 rounded-xl w-full md:w-auto">
-            {['all', 'active', 'pending'].map((f) => (
+            {['all', 'active', 'pending', 'revoked'].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -128,7 +153,7 @@ const ConsumerDashboard = () => {
             ))}
           </div>
           
-          <Button className="w-full md:w-auto px-6 h-12 rounded-xl whitespace-nowrap shadow-brand-500/20">
+          <Button onClick={() => setIsSearchModalOpen(true)} className="w-full md:w-auto px-6 h-12 rounded-xl whitespace-nowrap shadow-brand-500/20">
             <Globe size={18} className="mr-2" /> New Request
           </Button>
         </div>
@@ -176,10 +201,22 @@ const ConsumerDashboard = () => {
 
 // --- Helper Components ---
 
-const Activity = ({ size, className }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-  </svg>
+const StatCard = ({ label, value, icon: Icon, color, bg }) => (
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.1 }}
+    className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between relative overflow-hidden group hover:shadow-md transition-shadow"
+  >
+    <div className="relative z-10">
+      <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1">{label}</p>
+      <h3 className="text-3xl font-black text-gray-900">{value}</h3>
+    </div>
+    <div className={`p-4 rounded-2xl ${bg} ${color} group-hover:scale-110 transition-transform`}>
+      <Icon size={24} />
+    </div>
+    <div className={`absolute -right-6 -bottom-6 w-24 h-24 rounded-full ${bg} opacity-50 blur-2xl group-hover:opacity-100 transition-opacity`}></div>
+  </motion.div>
 );
 
 const AccessCard = ({ item, onView, index }) => {
@@ -220,11 +257,11 @@ const AccessCard = ({ item, onView, index }) => {
       <div className="grid grid-cols-2 gap-4 mb-6">
          <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Expiry</p>
-            <p className="text-sm font-bold text-gray-700">{item.expiry}</p>
+            <p className="text-sm font-bold text-gray-700">{'N/A'}</p>
          </div>
          <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Sensitivity</p>
-            <p className="text-sm font-bold text-gray-700">{item.sensitivity}</p>
+            <p className="text-sm font-bold text-gray-700">{'N/A'}</p>
          </div>
       </div>
 
@@ -240,7 +277,7 @@ const AccessCard = ({ item, onView, index }) => {
             </button>
         ) : (
           <Button 
-            onClick={onView}
+            onClick={() => onView(item)}
             className="w-full bg-gray-900 hover:bg-black text-white shadow-lg shadow-gray-900/20"
             icon={Eye}
           >
@@ -299,5 +336,70 @@ const DataModal = ({ data, onClose }) => (
     </motion.div>
   </div>
 );
+
+const SearchOwnerModal = ({ isOpen, onClose, searchResults, onSendRequest, searchQuery, setSearchQuery, handleSearch, requestPurpose, setRequestPurpose, requestError }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl border border-gray-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-brand-600 to-indigo-600 p-6 flex justify-between items-center">
+              <h3 className="font-bold text-white text-lg">New Access Request</h3>
+              <button onClick={onClose} className="bg-white/10 hover:bg-white/20 p-2 rounded-full text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 space-y-6">
+              <InputGroup 
+                label="Search Data Owner by Email" 
+                placeholder="owner@example.com" 
+                icon={Mail}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <Button onClick={handleSearch} className="w-full">Search</Button>
+
+              {searchResults.length > 0 && (
+                <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                  {searchResults.map(owner => (
+                    <div key={owner.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      <div>
+                        <p className="font-bold text-gray-900">{owner.first_name} {owner.last_name}</p>
+                        <p className="text-sm text-gray-500">{owner.email}</p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        onClick={() => onSendRequest(owner.id)}
+                        disabled={!requestPurpose}
+                      >
+                        Request Access
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <InputGroup 
+                label="Purpose of Request"
+                placeholder="e.g., Credit Score Verification"
+                value={requestPurpose}
+                onChange={(e) => setRequestPurpose(e.target.value)}
+              />
+              {requestError && <p className="text-red-500 text-sm">{requestError}</p>}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
 
 export default ConsumerDashboard;

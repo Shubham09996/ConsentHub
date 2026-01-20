@@ -3,22 +3,32 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Lock, Mail, User, Briefcase, ArrowRight } from 'lucide-react';
 import { Button, InputGroup, GlassCard } from '../../components/ui/PremiumComponents'; // Importing custom components
+import { authAPI } from '../../services/api';
 
 const Login = () => {
   const navigate = useNavigate();
   const [role, setRole] = useState('owner');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+    const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API
-    setTimeout(() => {
-      localStorage.setItem('token', 'mock_token');
-      localStorage.setItem('role', role);
-      navigate(role === 'owner' ? '/owner/dashboard' : '/consumer/dashboard');
+    setError('');
+    try {
+      const res = await authAPI.login(email, password, role);
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('role', res.data.role);
+      navigate(res.data.role === 'owner' ? '/owner/dashboard' : '/consumer/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
+      console.error('Login error:', err);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -56,12 +66,14 @@ const Login = () => {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
-          <InputGroup label="Email" type="email" placeholder="you@example.com" icon={Mail} required />
-          <InputGroup label="Password" type="password" placeholder="••••••••" icon={Lock} required />
+          <InputGroup label="Email" type="email" placeholder="you@example.com" icon={Mail} value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <InputGroup label="Password" type="password" placeholder="••••••••" icon={Lock} value={password} onChange={(e) => setPassword(e.target.value)} required />
           
           <div className="flex justify-end">
             <a href="#" className="text-xs font-semibold text-brand-600 hover:text-brand-700">Forgot Password?</a>
           </div>
+          {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+
 
           <Button type="submit" isLoading={loading} className="w-full py-3.5 text-lg" icon={ArrowRight}>
             Sign In

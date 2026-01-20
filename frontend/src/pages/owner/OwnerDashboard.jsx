@@ -1,32 +1,80 @@
-// ... imports same as before
-import React, { useState } from 'react';
-import { FileText, Bell, Activity, Clock, Check, X, Ban } from 'lucide-react'; // Removed User icon
+import React, { useState, useEffect } from 'react';
+import { FileText, Bell, Activity, Clock, Check, X, Ban } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { GlassCard, Button, Badge } from '../../components/ui/PremiumComponents';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ownerAPI } from '../../services/api';
 
 const OwnerDashboard = () => {
-  // ... state logic same as before (requests, connections, logs)
-  const [requests, setRequests] = useState([
-    { id: 1, org: 'HealthInsure Ltd', purpose: 'Medical Risk Assessment', time: '2 mins ago' },
-    { id: 2, org: 'CreditSafe Corp', purpose: 'Loan Eligibility Check', time: '1 hour ago' },
-  ]);
+  const [requests, setRequests] = useState([]);
+  const [activeConnections, setActiveConnections] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const [activeConnections, setActiveConnections] = useState([
-    { id: 101, org: 'TravelBookings Inc', purpose: 'Identity Verification', since: 'Oct 24, 2025' },
-    { id: 102, org: 'EduTech Pro', purpose: 'Academic Records', since: 'Nov 01, 2025' },
-  ]);
+  useEffect(() => {
+    fetchOwnerData();
+  }, []);
 
-  const [logs] = useState([
-    { id: 1, org: 'HealthInsure Ltd', action: 'Accessed Data', time: '10:30 AM', status: 'Success' },
-    { id: 2, org: 'Unknown IP', action: 'Failed Attempt', time: '09:15 AM', status: 'Blocked' },
-  ]);
+  const fetchOwnerData = async () => {
+    setLoading(true);
+    try {
+      const [requestsRes, connectionsRes, logsRes] = await Promise.all([
+        ownerAPI.getRequests(),
+        ownerAPI.getActiveConnections(),
+        ownerAPI.getLogs(),
+      ]);
+      setRequests(requestsRes.data.map(req => ({ 
+        id: req.id, 
+        org: `${req.first_name || ''} ${req.last_name || ''}`.trim() || req.company || 'N/A', 
+        purpose: req.purpose, 
+        time: new Date(req.created_at).toLocaleString() 
+      })));
+      setActiveConnections(connectionsRes.data.map(conn => ({
+        id: conn.id,
+        org: `${conn.first_name || ''} ${conn.last_name || ''}`.trim() || conn.company || 'N/A',
+        purpose: conn.purpose,
+        since: new Date(conn.since).toLocaleDateString()
+      })));
+      setLogs(logsRes.data.map(log => ({
+        id: log.id,
+        org: log.target_id.substring(0, 8), // Placeholder, ideally join with users table for actual org name
+        action: log.action_type.replace(/_/g, ' '),
+        time: new Date(log.timestamp).toLocaleString(),
+        status: log.status
+      })));
+    } catch (err) {
+      console.error('Error fetching owner data:', err);
+      setError('Failed to fetch dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleApprove = (id) => setRequests(requests.filter(r => r.id !== id));
-  const handleDeny = (id) => setRequests(requests.filter(r => r.id !== id));
-  const handleRevoke = (id) => {
+  const handleApprove = async (id) => {
+    try {
+      await ownerAPI.respondToRequest(id, 'APPROVED');
+      fetchOwnerData();
+    } catch (err) {
+      console.error('Error approving request:', err);
+    }
+  };
+  const handleDeny = async (id) => {
+    try {
+      await ownerAPI.respondToRequest(id, 'REJECTED');
+      fetchOwnerData();
+    } catch (err) {
+      console.error('Error denying request:', err);
+    }
+  };
+  const handleRevoke = async (id) => {
     if(window.confirm("Are you sure? This will immediately stop data access.")){
-      setActiveConnections(activeConnections.filter(c => c.id !== id));
+      try {
+        await ownerAPI.revokeAccess(id);
+        fetchOwnerData();
+      } catch (err) {
+        console.error('Error revoking access:', err);
+      }
     }
   };
 
@@ -42,8 +90,7 @@ const OwnerDashboard = () => {
         // Profile removed from here
       ]}
     >
-      {/* ... Content same as before (Pending, Active, Logs sections) ... */}
-       <div className="grid gap-8">
+      <div className="grid gap-8">
         
         {/* 1. Pending Requests Section */}
         <section>
@@ -133,7 +180,7 @@ const OwnerDashboard = () => {
                         <Clock size={14} /> {log.time}
                       </td>
                       <td className="p-4">
-                        <span className={`text-xs font-bold px-2 py-1 rounded-md ${log.status === 'Success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-md ${log.status === 'SUCCESS' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                           {log.status}
                         </span>
                       </td>
