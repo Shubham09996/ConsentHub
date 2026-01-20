@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, LogOut, Menu, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { userAPI } from '../../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const DashboardLayout = ({ title, subtitle, role, menuItems, children }) => {
@@ -11,6 +12,21 @@ const DashboardLayout = ({ title, subtitle, role, menuItems, children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   // State for Mobile Menu
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [userName, setUserName] = useState('User');
+  const [userCompany, setUserCompany] = useState('Company');
+
+  useEffect(() => {
+    const fetchUserName = async () => {
+      try {
+        const res = await userAPI.getProfile();
+        setUserName(`${res.data.first_name || ''} ${res.data.last_name || ''}`.trim());
+        setUserCompany(res.data.company || 'Company');
+      } catch (error) {
+        console.error('Failed to fetch user name for dashboard layout:', error);
+      }
+    };
+    fetchUserName();
+  }, []);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -183,7 +199,7 @@ const DashboardLayout = ({ title, subtitle, role, menuItems, children }) => {
           {/* Right Side: Role Info + Clickable Profile Avatar */}
           <div className="flex items-center gap-4">
              <div className="text-right">
-                <p className="text-sm font-bold text-gray-900">{role === 'Data Owner' ? 'Alex User' : 'Enterprise Corp'}</p>
+                <p className="text-sm font-bold text-gray-900">{role === 'Data Owner' ? userName : userCompany}</p>
                 <p className="text-xs text-gray-500">{role}</p>
              </div>
              

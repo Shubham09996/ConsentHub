@@ -8,6 +8,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { Button, InputGroup } from '../../components/ui/PremiumComponents';
 
 import { userAPI } from '../../services/api';
+import { ownerAPI, consumerAPI } from '../../services/api';
 
 const Profile = () => {
   const [role, setRole] = useState('owner');
@@ -19,12 +20,38 @@ const Profile = () => {
   const [passwordChange, setPasswordChange] = useState({ currentPassword: '', newPassword: '' });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [apiKey, setApiKey] = useState('Loading...');
 
   useEffect(() => {
     const storedRole = localStorage.getItem('role') || 'owner';
     setRole(storedRole);
     fetchProfile();
+    if (storedRole === 'owner') {
+      fetchPendingRequestsCount();
+    } else if (storedRole === 'consumer') {
+      fetchApiKey();
+    }
   }, []);
+
+  const fetchPendingRequestsCount = async () => {
+    try {
+      const res = await ownerAPI.getRequests();
+      setPendingRequestsCount(res.data.length);
+    } catch (err) {
+      console.error('Error fetching pending requests count:', err);
+    }
+  };
+
+  const fetchApiKey = async () => {
+    try {
+      const res = await consumerAPI.getApiKey();
+      setApiKey(res.data.apiKey);
+    } catch (err) {
+      console.error('Error fetching API key:', err);
+      setApiKey('Failed to load API Key');
+    }
+  };
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -76,7 +103,7 @@ const Profile = () => {
   // --- Sidebar Logic ---
   const ownerMenuItems = [
     { label: 'Overview', icon: FileText, path: '/owner/dashboard' },
-    { label: 'Pending Requests', icon: Bell, badge: 2 },
+    { label: 'Pending Requests', icon: Bell, badge: pendingRequestsCount },
     { label: 'Audit Trail', icon: Activity }
   ];
   const consumerMenuItems = [
@@ -116,7 +143,7 @@ const Profile = () => {
              <div className="relative group">
                 <div className="w-24 h-24 rounded-2xl bg-gradient-to-tr from-brand-100 to-white p-1 shadow-inner">
                    <img 
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.firstName}`} 
+                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.first_name}`} 
                     alt="Avatar" 
                     className="w-full h-full object-cover rounded-xl bg-white"
                    />
@@ -280,7 +307,7 @@ const Profile = () => {
                           >
                              <h2 className="text-lg font-bold text-gray-900 mb-6">Developer API Keys</h2>
                              <div className="bg-gray-900 rounded-xl p-5 flex items-center justify-between mb-6">
-                                <code className="text-gray-300 font-mono text-sm">sk_live_51Hz...9sXj</code>
+                                <code className="text-gray-300 font-mono text-sm">{apiKey}</code>
                                 <Button variant="secondary" className="h-8 text-xs bg-gray-800 text-white border-gray-700 hover:bg-gray-700">Copy</Button>
                              </div>
                              <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl flex gap-3 text-orange-800 text-sm">

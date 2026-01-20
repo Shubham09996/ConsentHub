@@ -11,7 +11,7 @@ const generateToken = (id, role) => {
 // @desc    Register new user
 // @route   POST /api/auth/register
 const registerUser = async (req, res) => {
-  const { email, password, role, firstName, lastName } = req.body;
+  const { email, password, role, firstName, lastName, phone, location, bio, company, website } = req.body;
 
   if (!email || !password || !role || !firstName || !lastName) {
     return res.status(400).json({ message: 'All fields are required' });
@@ -31,8 +31,8 @@ const registerUser = async (req, res) => {
 
     // Create User
     await db.query(
-      'INSERT INTO users (id, email, password_hash, role, first_name, last_name) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, email, hashedPassword, role, firstName, lastName]
+      'INSERT INTO users (id, email, password_hash, role, first_name, last_name, phone, location, bio, company, website) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [userId, email, hashedPassword, role, firstName, lastName, phone, location, bio, company, website]
     );
 
     // If Owner, create a dummy data record for them

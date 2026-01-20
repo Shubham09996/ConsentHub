@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, Globe, Lock, Unlock, Eye, X, Database, 
-  AlertCircle, Clock, CheckCircle2, Zap, LayoutGrid, Filter
+  AlertCircle, Clock, CheckCircle2, Zap, LayoutGrid, Filter, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '../../components/layout/DashboardLayout';
