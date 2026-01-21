@@ -17,9 +17,6 @@ const registerUser = async (req, res) => {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
-  if (role === 'owner' && !company) {
-    return res.status(400).json({ message: 'Company name is required for owners' });
-  }
 
   try {
     // Check if user exists
@@ -114,4 +111,27 @@ catch (error) {
   }
 };
 
-module.exports = { registerUser, loginUser };
+// @desc    Forgot password
+// @route   POST /api/auth/forgot-password
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const user = users[0];
+
+    // In a real application, you would send a password reset email here
+    // For now, we'll just return a success message
+    res.status(200).json({ message: 'Password reset link sent to your email' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error during forgot password request' });
+  }
+};
+
+module.exports = { registerUser, loginUser, forgotPassword };
