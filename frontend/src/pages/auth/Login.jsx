@@ -70,7 +70,7 @@ const Login = () => {
           <InputGroup label="Password" type="password" placeholder="••••••••" icon={Lock} value={password} onChange={(e) => setPassword(e.target.value)} required />
           
           <div className="flex justify-end">
-            <a href="#" className="text-xs font-semibold text-brand-600 hover:text-brand-700">Forgot Password?</a>
+            <a href="/forgot-password" className="text-xs font-semibold text-brand-600 hover:text-brand-700">Forgot Password?</a>
           </div>
           {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
 
@@ -78,6 +78,13 @@ const Login = () => {
           <Button type="submit" isLoading={loading} className="w-full py-3.5 text-lg" icon={ArrowRight}>
             Sign In
           </Button>
+
+          <p className="text-center text-sm text-gray-500 mt-4">
+            Don't have an account? <a href="/signup" className="font-semibold text-brand-600 hover:text-brand-700">Sign Up</a>
+          </p>
+          <p className="text-center text-sm text-gray-500 mt-2">
+            <a href="/" className="font-semibold text-gray-600 hover:text-gray-700">Go to Homepage</a>
+          </p>
         </form>
       </GlassCard>
     </div>

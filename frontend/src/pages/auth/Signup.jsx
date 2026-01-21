@@ -173,6 +173,9 @@ const Signup = () => {
           <p className="text-sm text-gray-600">
             Already have an account? <Link to="/login" className="text-brand-600 font-bold hover:underline">Sign In</Link>
           </p>
+          <p className="text-center text-sm text-gray-500 mt-2">
+            <Link to="/" className="font-semibold text-gray-600 hover:text-gray-700">Go to Homepage</Link>
+          </p>
         </div>
       </GlassCard>
     </div>

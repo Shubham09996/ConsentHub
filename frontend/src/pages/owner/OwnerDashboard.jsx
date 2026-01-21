@@ -116,11 +116,24 @@ const OwnerDashboard = () => {
 
   const handleUpdateOffering = async (id) => {
     try {
-      await ownerAPI.updateDataOffering(id, { ...editingOffering, dataPayload: JSON.parse(dataPayload) });
+      // Fetch the current data payload to merge with updated metadata
+      const recordRes = await ownerAPI.getDataRecordByOfferingId(id);
+      const currentDataPayload = recordRes.data; // This should already be parsed JSON or a string
+
+      // If currentDataPayload is a string, parse it, otherwise use as is
+      const parsedCurrentDataPayload = typeof currentDataPayload === 'string' 
+        ? JSON.parse(currentDataPayload) 
+        : currentDataPayload;
+
+      await ownerAPI.updateDataOffering(id, { 
+        ...editingOffering, 
+        dataPayload: parsedCurrentDataPayload 
+      });
       setEditingOffering(null);
       fetchDataOfferings();
     } catch (err) {
       console.error('Error updating data offering:', err);
+      alert('Failed to update offering. Check console for details.');
     }
   };
 

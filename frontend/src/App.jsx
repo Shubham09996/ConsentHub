@@ -3,10 +3,12 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
+import ForgotPassword from './pages/auth/ForgotPassword'; // New Import
+import HowItWorks from './pages/HowItWorks'; // New Import
 import OwnerDashboard from './pages/owner/OwnerDashboard';
 import ConsumerDashboard from './pages/consumer/ConsumerDashboard';
-import Profile from './pages/shared/Profile';
 import AllOwners from './pages/consumer/AllOwners'; // New Import
+import Profile from './pages/shared/Profile'; // New Import
 
 // Route Protection Logic
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -31,8 +33,10 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         
         {/* Protected Owner Routes */}
         <Route path="/owner/dashboard" element={

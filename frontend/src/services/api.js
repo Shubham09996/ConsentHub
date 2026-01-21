@@ -40,8 +40,10 @@ export const authAPI = {
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-  }
+  },
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
 };
+
 
 export const ownerAPI = {
   getProfile: () => api.get('/owner/profile'),

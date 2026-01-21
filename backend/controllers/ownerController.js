@@ -170,9 +170,15 @@ const updateDataOffering = async (req, res) => {
 const deleteDataOffering = async (req, res) => {
   const { id } = req.params;
   try {
+    // Delete associated consent requests first
+    await db.query('DELETE FROM consent_requests WHERE data_offering_id = ? AND owner_id = ?', [id, req.user.id]);
+    // Then delete associated data records
+    await db.query('DELETE FROM data_records WHERE data_offering_id = ? AND owner_id = ?', [id, req.user.id]);
+    // Finally, delete the data offering
     await db.query('DELETE FROM data_offerings WHERE id = ? AND owner_id = ?', [id, req.user.id]);
-    res.json({ message: 'Data Offering Deleted' });
+    res.json({ message: 'Data Offering and associated records Deleted' });
   } catch (error) {
+    console.error('Error deleting data offering or record:', error);
     res.status(500).json({ message: error.message });
   }
 };

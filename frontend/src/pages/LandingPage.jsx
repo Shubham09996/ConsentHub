@@ -2,10 +2,30 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Shield, Lock, Activity, ChevronRight, CheckCircle2, 
-  Menu, X, Server, Globe, Zap, ArrowRight, Github, Twitter, Linkedin, Mail 
+  Shield, Lock, Activity, CheckCircle2, 
+  Menu, X, Server, Globe, Zap, ArrowRight, Github, Twitter, Linkedin
 } from 'lucide-react';
-import { Button } from '../components/ui/PremiumComponents';
+
+// --- Improved Button Component ---
+const Button = ({ children, onClick, variant = 'primary', className = "" }) => {
+  // Base styles for all buttons
+  const baseStyles = "font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg";
+  
+  // Variants handles different colors correctly without conflict
+  const variants = {
+    primary: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/30",
+    white: "bg-white text-indigo-600 hover:bg-gray-50 shadow-black/10 border-none" 
+  };
+
+  return (
+    <button 
+      onClick={onClick}
+      className={`${baseStyles} ${variants[variant] || variants.primary} ${className}`}
+    >
+      {children}
+    </button>
+  );
+};
 
 // --- Components ---
 
@@ -14,35 +34,32 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    // Added border-b for separation as requested
     <nav className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-xl border-b border-gray-200/80">
       <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
         
         {/* Logo Section */}
         <div className="flex items-center gap-2.5 cursor-pointer group" onClick={() => navigate('/')}>
-          <div className="bg-gradient-to-br from-brand-600 to-violet-600 p-2 rounded-xl text-white shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform">
+          <div className="bg-gradient-to-br from-indigo-600 to-violet-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
             <Shield size={24} fill="currentColor" />
           </div>
           <span className="text-2xl font-bold text-gray-900 tracking-tight">
-            Consent<span className="text-brand-600">Hub</span>
+            Consent<span className="text-indigo-600">Hub</span>
           </span>
         </div>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
           <NavLink href="#features">Features</NavLink>
-          <NavLink href="#how-it-works">How it Works</NavLink>
-          <NavLink href="#compliance">Compliance</NavLink>
-          
+          <NavLink href="/how-it-works">How it Works</NavLink>
           <div className="h-6 w-px bg-gray-300 mx-2"></div>
           
           <button 
             onClick={() => navigate('/login')} 
-            className="text-gray-600 font-semibold hover:text-brand-600 transition-colors"
+            className="text-gray-600 font-semibold hover:text-indigo-600 transition-colors"
           >
             Log in
           </button>
-          <Button onClick={() => navigate('/signup')} className="shadow-brand-500/25">
+          <Button onClick={() => navigate('/signup')}>
             Get Started
           </Button>
         </div>
@@ -62,7 +79,7 @@ const Navbar = () => {
         >
           <div className="flex flex-col p-6 gap-4">
             <MobileLink onClick={() => setMobileMenuOpen(false)} href="#features">Features</MobileLink>
-            <MobileLink onClick={() => setMobileMenuOpen(false)} href="#how-it-works">How it Works</MobileLink>
+            <button onClick={() => { navigate('/how-it-works'); setMobileMenuOpen(false); }} className="text-left font-bold text-gray-900 py-2">How it Works</button>
             <hr className="border-gray-100" />
             <button onClick={() => navigate('/login')} className="text-left font-bold text-gray-900 py-2">Log In</button>
             <Button onClick={() => navigate('/signup')} className="w-full justify-center">Get Started</Button>
@@ -74,14 +91,14 @@ const Navbar = () => {
 };
 
 const NavLink = ({ href, children }) => (
-  <a href={href} className="text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors relative group">
+  <a href={href} className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors relative group">
     {children}
-    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-brand-600 transition-all group-hover:w-full"></span>
+    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-600 transition-all group-hover:w-full"></span>
   </a>
 );
 
 const MobileLink = ({ href, onClick, children }) => (
-  <a href={href} onClick={onClick} className="text-lg font-medium text-gray-600 hover:text-brand-600">
+  <a href={href} onClick={onClick} className="text-lg font-medium text-gray-600 hover:text-indigo-600">
     {children}
   </a>
 );
@@ -89,9 +106,9 @@ const MobileLink = ({ href, onClick, children }) => (
 const FeatureCard = ({ icon: Icon, title, desc }) => (
   <motion.div 
     whileHover={{ y: -5 }}
-    className="group p-8 bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-brand-100 transition-all duration-300"
+    className="group p-8 bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all duration-300"
   >
-    <div className="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center mb-6 text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors">
+    <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
       <Icon size={28} />
     </div>
     <h3 className="text-xl font-bold text-gray-900 mb-3">{title}</h3>
@@ -106,7 +123,7 @@ const Footer = () => (
       {/* Brand Column */}
       <div className="col-span-1 md:col-span-1">
         <div className="flex items-center gap-2 mb-6 text-white">
-          <Shield size={24} className="text-brand-500" />
+          <Shield size={24} className="text-indigo-500" />
           <span className="text-2xl font-bold">ConsentHub</span>
         </div>
         <p className="text-sm leading-relaxed text-gray-400 mb-6">
@@ -148,9 +165,9 @@ const Footer = () => (
           <input 
             type="email" 
             placeholder="Enter your email" 
-            className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-4 py-2 w-full focus:outline-none focus:border-brand-500"
+            className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-4 py-2 w-full focus:outline-none focus:border-indigo-500"
           />
-          <button className="bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-3 transition-colors">
+          <button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 transition-colors">
             <ArrowRight size={18} />
           </button>
         </div>
@@ -168,11 +185,11 @@ const Footer = () => (
 );
 
 const FooterLink = ({ children }) => (
-  <li><a href="#" className="hover:text-brand-400 transition-colors">{children}</a></li>
+  <li><a href="#" className="hover:text-indigo-400 transition-colors">{children}</a></li>
 );
 
 const SocialIcon = ({ icon: Icon }) => (
-  <a href="#" className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-brand-600 hover:text-white transition-all">
+  <a href="#" className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all">
     <Icon size={16} />
   </a>
 );
@@ -183,12 +200,11 @@ const LandingPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-white font-sans selection:bg-brand-100 selection:text-brand-900">
+    <div className="min-h-screen bg-white font-sans selection:bg-indigo-100 selection:text-indigo-900">
       <Navbar />
 
-      {/* Hero Section with Grid Background */}
+      {/* Hero Section */}
       <section className="relative pt-20 pb-32 overflow-hidden">
-        {/* CSS Grid Pattern Background */}
         <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
         <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-white via-transparent to-transparent z-10"></div>
         
@@ -197,9 +213,9 @@ const LandingPage = () => {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-sm font-semibold mb-8 hover:bg-brand-100 transition-colors cursor-default"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-sm font-semibold mb-8 hover:bg-indigo-100 transition-colors cursor-default"
           >
-            <span className="flex h-2 w-2 rounded-full bg-brand-600 animate-pulse"></span>
+            <span className="flex h-2 w-2 rounded-full bg-indigo-600 animate-pulse"></span>
             New: Enhanced Audit Logs v2.0
           </motion.div>
 
@@ -210,7 +226,7 @@ const LandingPage = () => {
             className="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6 tracking-tight leading-[1.1]"
           >
             Secure Data Access <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
               Made Transparent
             </span>
           </motion.h1>
@@ -234,16 +250,12 @@ const LandingPage = () => {
             <Button onClick={() => navigate('/signup')} className="h-14 px-8 text-lg rounded-full">
               Start Free Integration
             </Button>
-            <button className="h-14 px-8 text-lg font-semibold text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-all flex items-center gap-2">
-              <Zap size={20} className="text-yellow-500 fill-yellow-500" /> View Live Demo
-            </button>
           </motion.div>
 
           {/* Trust Badge */}
           <div className="mt-16 pt-8 border-t border-gray-100">
             <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-6">Trusted by security teams at</p>
             <div className="flex flex-wrap justify-center gap-8 md:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-               {/* Placeholder Logos */}
                <div className="flex items-center gap-2 text-xl font-bold font-serif">Acme Corp</div>
                <div className="flex items-center gap-2 text-xl font-bold font-mono">GlobalBank</div>
                <div className="flex items-center gap-2 text-xl font-bold font-sans">HealthPlus</div>
@@ -296,18 +308,28 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* CTA Bottom */}
+      {/* Fixed CTA Section (Matching Image) */}
       <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto bg-brand-600 rounded-[2.5rem] p-12 md:p-20 text-center relative overflow-hidden shadow-2xl shadow-brand-500/40">
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
+        <div className="max-w-5xl mx-auto bg-indigo-600 rounded-[2.5rem] p-12 md:p-20 text-center relative overflow-hidden shadow-2xl shadow-indigo-500/40">
           
-          <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 relative z-10">Ready to secure your data exchange?</h2>
-          <p className="text-brand-100 text-xl mb-10 max-w-2xl mx-auto relative z-10">
+          {/* Subtle Glow Effect (Corrected) */}
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+          
+          <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 relative z-10 leading-tight">
+            Ready to secure your data <br/> exchange?
+          </h2>
+          <p className="text-indigo-100 text-lg md:text-xl mb-10 max-w-2xl mx-auto relative z-10">
             Join the network of transparent data owners and ethical consumers today.
           </p>
+          
           <div className="relative z-10">
-             <Button onClick={() => navigate('/signup')} className="bg-white text-brand-600 hover:bg-gray-100 border-none px-10 py-4 h-auto text-lg rounded-xl">
-                Get Started Now
+             {/* Using variant="white" makes the button WHITE on PURPLE background */}
+             <Button 
+                variant="white"
+                onClick={() => navigate('/signup')} 
+                className="px-10 py-4 h-auto text-lg rounded-xl mx-auto"
+             >
+               Get Started Now
              </Button>
           </div>
         </div>
