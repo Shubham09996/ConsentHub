@@ -35,15 +35,26 @@ const registerUser = async (req, res) => {
       [userId, email, hashedPassword, role, firstName, lastName, phone, location, bio, company, website]
     );
 
-    // If Owner, create a dummy data record for them
+    // If Owner, create a dummy data offering and record for them
     if (role === 'owner') {
+      const dataOfferingId = uuidv4();
+      const dataOfferingName = 'Default Data Offering';
+      const dataOfferingDescription = 'Automatically generated data offering.';
+
+      // Insert into data_offerings table first
+      await db.query(
+        'INSERT INTO data_offerings (id, owner_id, name, description, sensitivity) VALUES (?, ?, ?, ?, ?)',
+        [dataOfferingId, userId, dataOfferingName, dataOfferingDescription, 'LOW']
+      );
+
       const recordId = uuidv4();
       const dummyData = JSON.stringify({
         creditScore: 750,
         healthRecord: "Fit",
         lastCheckup: "2024-01-20"
       });
-      await db.query('INSERT INTO data_records (id, owner_id, data_payload) VALUES (?, ?, ?)', [recordId, userId, dummyData]);
+      // Insert into data_records table with the data_offering_id
+      await db.query('INSERT INTO data_records (id, owner_id, data_offering_id, data_payload) VALUES (?, ?, ?, ?)', [recordId, userId, dataOfferingId, dummyData]);
     }
 
     res.status(201).json({
@@ -91,7 +102,9 @@ const loginUser = async (req, res) => {
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
     }
-  } catch (error) {
+  }
+
+catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error during login' });
   }

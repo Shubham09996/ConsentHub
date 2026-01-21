@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, Globe, Lock, Unlock, Eye, X, Database, 
-  AlertCircle, Clock, CheckCircle2, Zap, LayoutGrid, Filter, Activity
+import {
+  Search, Globe, Lock, Unlock, Eye, X, Database,
+  AlertCircle, Clock, CheckCircle2, Zap, LayoutGrid, Filter, Activity, Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import { GlassCard, Button, InputGroup, Badge } from '../../components/ui/PremiumComponents';
+import { GlassCard, Button, InputGroup, Badge, Select } from '../../components/ui/PremiumComponents';
 
 import { consumerAPI } from '../../services/api';
 
@@ -22,6 +22,10 @@ const ConsumerDashboard = () => {
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [requestPurpose, setRequestPurpose] = useState('');
   const [requestError, setRequestError] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false); // New state for search loading
+  const [searchError, setSearchError] = useState(''); // New state for search error
+  const [ownerDataOfferings, setOwnerDataOfferings] = useState([]); // New state for data offerings of the searched owner
+  const [selectedDataOfferingId, setSelectedDataOfferingId] = useState(''); // New state for the selected data offering
 
   useEffect(() => {
     fetchDashboardStats();
@@ -42,16 +46,21 @@ const ConsumerDashboard = () => {
     setLoading(true);
     try {
       const res = await consumerAPI.getAccessList();
-      setAccessList(res.data.map(item => ({
-        id: item.id,
-        name: `${item.first_name}`,
-        email: item.email,
-        status: item.status.toLowerCase(),
-        ownerId: item.owner_id,
-        expiry: 'N/A',
-        sensitivity: 'N/A', // This would ideally come from the backend with the access list
-        data: null
-      })));
+      console.log("Access List API Response:", res.data);
+      setAccessList(res.data.map(item => {
+        console.log("Mapping item:", item);
+        return {
+          id: item.id,
+          name: `${item.first_name}`,
+          email: item.email,
+          status: item.status.toLowerCase(),
+          ownerId: item.owner_id,
+          dataOfferingId: item.data_offering_id, 
+          expiry: 'N/A',
+          sensitivity: 'N/A', 
+          data: null
+        };
+      }));
     } catch (err) {
       console.error('Error fetching access list:', err);
       setError('Failed to fetch access list');
@@ -61,12 +70,28 @@ const ConsumerDashboard = () => {
   };
 
   const handleSearchOwners = async () => {
-    if (!searchQuery) return;
+    setSearchError(''); // Clear previous errors
+    if (!searchQuery) {
+      setSearchError('Please enter an email to search.');
+      return;
+    }
+    setSearchLoading(true); // Set loading true
+    console.log('Searching for owner with query:', searchQuery); // Log the search query
     try {
       const res = await consumerAPI.searchOwner(searchQuery);
-      setSearchOwners(res.data);
+      const ownersWithOfferings = await Promise.all(res.data.map(async (owner) => {
+        const offeringsRes = await consumerAPI.getDataOfferingsByOwner(owner.id);
+        return { ...owner, dataOfferings: offeringsRes.data };
+      }));
+      setSearchOwners(ownersWithOfferings);
+      if (ownersWithOfferings.length === 0) {
+        setSearchError('No owners found matching your search.');
+      }
     } catch (err) {
       console.error('Error searching owners:', err);
+      setSearchError(err.response?.data?.message || 'Failed to search for owners.');
+    } finally {
+      setSearchLoading(false); // Set loading false
     }
   };
 
@@ -76,11 +101,16 @@ const ConsumerDashboard = () => {
       setRequestError('Purpose cannot be empty.');
       return;
     }
+    if (!selectedDataOfferingId) {
+      setRequestError('Please select a data offering.');
+      return;
+    }
     try {
-      await consumerAPI.requestAccess(ownerId, requestPurpose);
+      await consumerAPI.requestAccess(ownerId, requestPurpose, selectedDataOfferingId);
       setIsSearchModalOpen(false);
       setSearchQuery('');
       setRequestPurpose('');
+      setSelectedDataOfferingId(''); // Clear selected offering
       fetchAccessList(); // Refresh access list
     } catch (err) {
       setRequestError(err.response?.data?.message || 'Failed to send request');
@@ -88,10 +118,10 @@ const ConsumerDashboard = () => {
     }
   };
 
-  const handleViewData = async (item) => {
+  const handleViewData = async (ownerId, dataOfferingId) => {
     try {
-      const res = await consumerAPI.getData(item.ownerId);
-      setViewData({ ...item, data: res.data });
+      const res = await consumerAPI.getData(ownerId, dataOfferingId);
+      setViewData({ ownerId, dataOfferingId, data: res.data });
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to retrieve data.');
       console.error('Error viewing data:', err);
@@ -171,7 +201,7 @@ const ConsumerDashboard = () => {
                 <AccessCard 
                   key={item.id} 
                   item={item} 
-                  onView={() => setViewData(item)} 
+                  onView={() => handleViewData(item.ownerId, item.dataOfferingId)} 
                   index={idx} 
                 />
               ))}
@@ -193,6 +223,24 @@ const ConsumerDashboard = () => {
             <DataModal data={viewData} onClose={() => setViewData(null)} />
           )}
         </AnimatePresence>
+
+        <SearchOwnerModal 
+          isOpen={isSearchModalOpen} 
+          onClose={() => setIsSearchModalOpen(false)}
+          searchResults={searchOwners}
+          onSendRequest={handleRequestAccess}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          handleSearch={handleSearchOwners}
+          requestPurpose={requestPurpose}
+          setRequestPurpose={setRequestPurpose}
+          requestError={requestError}
+          searchLoading={searchLoading}
+          searchError={searchError}
+          ownerDataOfferings={ownerDataOfferings}
+          selectedDataOfferingId={selectedDataOfferingId}
+          setSelectedDataOfferingId={setSelectedDataOfferingId}
+        />
 
       </div>
     </DashboardLayout>
@@ -226,7 +274,7 @@ const AccessCard = ({ item, onView, index }) => {
     revoked: { border: 'border-red-200', bg: 'bg-red-50', text: 'text-red-700', icon: Lock },
   };
   
-  const style = statusStyles[item.status];
+  const style = statusStyles[item.status] || statusStyles.pending;
   const StatusIcon = style.icon;
 
   return (
@@ -257,11 +305,11 @@ const AccessCard = ({ item, onView, index }) => {
       <div className="grid grid-cols-2 gap-4 mb-6">
          <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Expiry</p>
-            <p className="text-sm font-bold text-gray-700">{'N/A'}</p>
+            <p className="text-sm font-bold text-gray-700">{item.expiry}</p>
          </div>
          <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Sensitivity</p>
-            <p className="text-sm font-bold text-gray-700">{'N/A'}</p>
+            <p className="text-sm font-bold text-gray-700">{item.sensitivity}</p>
          </div>
       </div>
 
@@ -277,7 +325,7 @@ const AccessCard = ({ item, onView, index }) => {
             </button>
         ) : (
           <Button 
-            onClick={() => onView(item)}
+            onClick={() => onView(item.ownerId, item.dataOfferingId)}
             className="w-full bg-gray-900 hover:bg-black text-white shadow-lg shadow-gray-900/20"
             icon={Eye}
           >
@@ -337,7 +385,7 @@ const DataModal = ({ data, onClose }) => (
   </div>
 );
 
-const SearchOwnerModal = ({ isOpen, onClose, searchResults, onSendRequest, searchQuery, setSearchQuery, handleSearch, requestPurpose, setRequestPurpose, requestError }) => {
+const SearchOwnerModal = ({ isOpen, onClose, searchResults, onSendRequest, searchQuery, setSearchQuery, handleSearch, requestPurpose, setRequestPurpose, requestError, searchLoading, searchError, ownerDataOfferings, selectedDataOfferingId, setSelectedDataOfferingId }) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -358,42 +406,69 @@ const SearchOwnerModal = ({ isOpen, onClose, searchResults, onSendRequest, searc
               </button>
             </div>
             <div className="p-8 space-y-6">
-              <InputGroup 
-                label="Search Data Owner by Email" 
-                placeholder="owner@example.com" 
-                icon={Mail}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button onClick={handleSearch} className="w-full">Search</Button>
+              <div className="space-y-4">
+                 <InputGroup 
+                  label="Search Data Owner by Email" 
+                  placeholder="owner@example.com" 
+                  icon={Mail}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Button onClick={handleSearch} className="w-full" isLoading={searchLoading}>
+                   {searchLoading ? 'Searching...' : 'Search'}
+                </Button>
+                {searchError && <p className="text-red-500 text-sm mt-2">{searchError}</p>}
+              </div>
 
               {searchResults.length > 0 && (
-                <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                <div className="space-y-4 max-h-60 overflow-y-auto pr-2 mt-4 border-t border-gray-100 pt-4">
+                  <h4 className="text-sm font-bold text-gray-700">Search Results</h4>
                   {searchResults.map(owner => (
-                    <div key={owner.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <div>
-                        <p className="font-bold text-gray-900">{owner.first_name} {owner.last_name}</p>
-                        <p className="text-sm text-gray-500">{owner.email}</p>
+                    <div key={owner.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+                      <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-brand-600 font-bold">
+                            {owner.first_name.charAt(0)}
+                         </div>
+                         <div>
+                            <p className="font-bold text-gray-900">{owner.first_name} {owner.last_name}</p>
+                            <p className="text-xs text-gray-500">{owner.email}</p>
+                         </div>
                       </div>
+
+                      {owner.dataOfferings && owner.dataOfferings.length > 0 && (
+                        <Select
+                          label="Select Data Offering"
+                          value={selectedDataOfferingId}
+                          onChange={(e) => setSelectedDataOfferingId(e.target.value)}
+                          options={[
+                            { value: '', label: '-- Select an offering --' },
+                            ...owner.dataOfferings.map(offering => ({ value: offering.id, label: offering.name }))
+                          ]}
+                          required
+                        />
+                      )}
+                      
+                      {/* Purpose Input for specific user */}
+                      <InputGroup 
+                        placeholder="Purpose of access (e.g. Loan Verification)" 
+                        value={requestPurpose}
+                        onChange={(e) => setRequestPurpose(e.target.value)}
+                      />
+                      
                       <Button 
                         size="sm" 
                         onClick={() => onSendRequest(owner.id)}
-                        disabled={!requestPurpose}
+                        disabled={!requestPurpose || !selectedDataOfferingId}
+                        className="w-full"
                       >
-                        Request Access
+                        Send Request
                       </Button>
                     </div>
                   ))}
                 </div>
               )}
-
-              <InputGroup 
-                label="Purpose of Request"
-                placeholder="e.g., Credit Score Verification"
-                value={requestPurpose}
-                onChange={(e) => setRequestPurpose(e.target.value)}
-              />
-              {requestError && <p className="text-red-500 text-sm">{requestError}</p>}
+              
+              {requestError && <p className="text-red-500 text-sm mt-2 text-center">{requestError}</p>}
             </div>
           </motion.div>
         </motion.div>

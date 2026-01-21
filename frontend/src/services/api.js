@@ -46,18 +46,39 @@ export const authAPI = {
 export const ownerAPI = {
   getProfile: () => api.get('/owner/profile'),
   getRequests: () => api.get('/owner/requests'), // Pending requests [cite: 23]
-  respondToRequest: (id, status) => api.put(`/owner/requests/${id}`, { status }), // Approve/Reject [cite: 24]
+  getActiveConnections: () => api.get('/owner/connections'), // Active Connections
+  respondToRequest: (id, status) => api.put(`/owner/request/${id}`, { status }), // Approve/Reject [cite: 24]
   revokeAccess: (consumerId) => api.post('/owner/revoke', { consumerId }), // Revoke [cite: 25]
   getLogs: () => api.get('/owner/logs'), // Audit logs [cite: 26]
+  createDataOffering: (data) => api.post('/owner/data-offerings', data),
+  getDataOfferings: () => api.get('/owner/data-offerings'),
+  updateDataOffering: (id, data) => api.put(`/owner/data-offerings/${id}`, data),
+  deleteDataOffering: (id) => api.delete(`/owner/data-offerings/${id}`),
+  createDataRecord: (data) => api.post('/owner/data-records', data),
+  updateDataRecord: (id, data) => api.put(`/owner/data-records/${id}`, data),
+  getDataRecordByOfferingId: (dataOfferingId) => api.get(`/owner/data-records/${dataOfferingId}`),
 };
 
 export const consumerAPI = {
-  searchOwner: (query) => api.get(`/consumer/search?q=${query}`), // Search [cite: 29]
-  requestAccess: (ownerId, purpose) => api.post('/consumer/request', { ownerId, purpose }), // Request [cite: 30]
+  searchOwner: async (query) => {
+    console.log('Attempting to search owner with query:', query);
+    try {
+      const response = await api.get(`/consumer/search?email=${query}`);
+      return response;
+    } catch (error) {
+      console.error('Error during consumerAPI.searchOwner:', error);
+      throw error; // Re-throw to be caught by the component
+    }
+  }, // Search [cite: 29]
+  requestAccess: (ownerId, purpose, dataOfferingId) => {
+    console.log('consumerAPI.requestAccess - Sending dataOfferingId:', dataOfferingId);
+    return api.post('/consumer/request', { ownerId, purpose, dataOfferingId });
+  }, // Request [cite: 30]
   getAccessList: () => api.get('/consumer/access-list'),
-  getData: (ownerId) => api.get(`/consumer/data/${ownerId}`), // View Data [cite: 31]
+  getData: (ownerId, dataOfferingId) => api.get(`/consumer/data/${ownerId}?dataOfferingId=${dataOfferingId}`), // View Data [cite: 31]
   getDashboardStats: () => api.get('/consumer/dashboard-stats'),
   getApiKey: () => api.get('/consumer/api-key'),
+  getDataOfferingsByOwner: (ownerId) => api.get(`/consumer/data-offerings/${ownerId}`),
 };
 
 export const userAPI = {

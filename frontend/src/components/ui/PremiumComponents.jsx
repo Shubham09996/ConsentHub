@@ -97,3 +97,26 @@ export const Badge = ({ status, text }) => {
     </span>
   );
 };
+
+// 5. Styled Select Field
+export const Select = ({ label, options, value, onChange, ...props }) => (
+  <div className="space-y-1.5 w-full">
+    {label && <label className="text-sm font-semibold text-gray-700 ml-1">{label}</label>}
+    <div className="relative group">
+      <select
+        className={cn(
+          "w-full bg-gray-50/50 border border-gray-200 rounded-xl py-3 px-4 text-gray-900 outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all",
+        )}
+        value={value}
+        onChange={onChange}
+        {...props}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+);
