@@ -17,6 +17,10 @@ const registerUser = async (req, res) => {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
+  if (role === 'owner' && !company) {
+    return res.status(400).json({ message: 'Company name is required for owners' });
+  }
+
   try {
     // Check if user exists
     const [existingUser] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
@@ -43,8 +47,8 @@ const registerUser = async (req, res) => {
 
       // Insert into data_offerings table first
       await db.query(
-        'INSERT INTO data_offerings (id, owner_id, name, description, sensitivity) VALUES (?, ?, ?, ?, ?)',
-        [dataOfferingId, userId, dataOfferingName, dataOfferingDescription, 'LOW']
+        'INSERT INTO data_offerings (id, owner_id, name, description, sensitivity, category) VALUES (?, ?, ?, ?, ?, ?)',
+        [dataOfferingId, userId, dataOfferingName, dataOfferingDescription, 'LOW', 'GENERAL']
       );
 
       const recordId = uuidv4();

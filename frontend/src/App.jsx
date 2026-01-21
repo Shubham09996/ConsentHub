@@ -5,7 +5,8 @@ import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import OwnerDashboard from './pages/owner/OwnerDashboard';
 import ConsumerDashboard from './pages/consumer/ConsumerDashboard';
-import Profile from './pages/shared/Profile'; // New Import
+import Profile from './pages/shared/Profile';
+import AllOwners from './pages/consumer/AllOwners'; // New Import
 
 // Route Protection Logic
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -44,6 +45,11 @@ function App() {
         <Route path="/consumer/dashboard" element={
           <ProtectedRoute allowedRole="consumer">
             <ConsumerDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/consumer/owners" element={
+          <ProtectedRoute allowedRole="consumer">
+            <AllOwners />
           </ProtectedRoute>
         } />
 

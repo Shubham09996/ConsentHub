@@ -7,11 +7,25 @@ const searchOwner = async (req, res) => {
   const { email } = req.query;
   try {
     const [users] = await db.query(
-      'SELECT id, first_name, last_name, email FROM users WHERE email LIKE ? AND role = "owner"',
+      'SELECT id, first_name, last_name, email, company FROM users WHERE email LIKE ? AND role = "owner"',
       [`%${email}%`]
     );
     res.json(users);
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get All Data Owners
+// @route   GET /api/consumer/owners
+const getAllOwners = async (req, res) => {
+  try {
+    const [owners] = await db.query(
+      'SELECT id, first_name, last_name, email, company FROM users WHERE role = "owner"'
+    );
+    res.json(owners);
+  } catch (error) {
+    console.error('Error in getAllOwners:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -45,7 +59,11 @@ const getAccessList = async (req, res) => {
   try {
     console.log('getAccessList - req.user.id:', req.user.id);
     const [list] = await db.query(
-`SELECT cr.id, cr.status, u.first_name, u.email, cr.owner_id, cr.data_offering_id FROM consent_requests cr JOIN users u ON cr.owner_id = u.id WHERE cr.consumer_id = ?`,
+`SELECT cr.id, cr.status, u.first_name, u.email, u.company, cr.owner_id, cr.data_offering_id, do.sensitivity, do.category, cr.created_at 
+     FROM consent_requests cr 
+     JOIN users u ON cr.owner_id = u.id 
+     LEFT JOIN data_offerings do ON cr.data_offering_id = do.id 
+     WHERE cr.consumer_id = ?`,
       [req.user.id]
     );
     res.json(list);
@@ -134,13 +152,14 @@ const getDataOfferingsByOwner = async (req, res) => {
   const { ownerId } = req.params;
   try {
     const [offerings] = await db.query(
-      'SELECT id, name, description, sensitivity FROM data_offerings WHERE owner_id = ?',
+      'SELECT id, name, description, sensitivity, category FROM data_offerings WHERE owner_id = ?',
       [ownerId]
     );
     res.json(offerings);
   } catch (error) {
+    console.error('Error in getDataOfferingsByOwner:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
-module.exports = { searchOwner, sendRequest, getAccessList, getViewData, getConsumerDashboardStats, getConsumerApiKey, getDataOfferingsByOwner };
+module.exports = { searchOwner, sendRequest, getAccessList, getViewData, getConsumerDashboardStats, getConsumerApiKey, getDataOfferingsByOwner, getAllOwners };

@@ -47,20 +47,19 @@ const ConsumerDashboard = () => {
     try {
       const res = await consumerAPI.getAccessList();
       console.log("Access List API Response:", res.data);
-      setAccessList(res.data.map(item => {
-        console.log("Mapping item:", item);
-        return {
-          id: item.id,
-          name: `${item.first_name}`,
-          email: item.email,
-          status: item.status.toLowerCase(),
-          ownerId: item.owner_id,
-          dataOfferingId: item.data_offering_id, 
-          expiry: 'N/A',
-          sensitivity: 'N/A', 
-          data: null
-        };
-      }));
+      setAccessList(res.data.map(item => ({
+        id: item.id,
+        name: `${item.first_name}`,
+        email: item.email,
+        company: item.company || 'N/A',
+        status: item.status.toLowerCase(),
+        ownerId: item.owner_id,
+        dataOfferingId: item.data_offering_id, 
+        sensitivity: item.sensitivity || 'N/A',
+        category: item.category || 'N/A',
+        createdAt: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A',
+        data: null
+      })));
     } catch (err) {
       console.error('Error fetching access list:', err);
       setError('Failed to fetch access list');
@@ -91,7 +90,7 @@ const ConsumerDashboard = () => {
       console.error('Error searching owners:', err);
       setSearchError(err.response?.data?.message || 'Failed to search for owners.');
     } finally {
-      setSearchLoading(false); // Set loading false
+      setSearchLoading(false);
     }
   };
 
@@ -142,7 +141,7 @@ const ConsumerDashboard = () => {
       role="Data Consumer"
       menuItems={[
         { label: 'My Access Hub', icon: Database, path: '/consumer/dashboard' },
-        { label: 'Global Search', icon: Globe },
+        { label: 'Global Search', icon: Globe, path: '/consumer/owners' },
         { label: 'Profile Settings', icon: Lock, path: '/profile' }
       ]}
     >
@@ -293,6 +292,7 @@ const AccessCard = ({ item, onView, index }) => {
           </div>
           <div>
             <h4 className="font-bold text-gray-900 leading-tight">{item.name}</h4>
+            <p className="text-xs text-gray-500 font-medium">{item.company}</p>
             <p className="text-xs text-gray-500 font-medium">{item.email}</p>
           </div>
         </div>
@@ -304,12 +304,16 @@ const AccessCard = ({ item, onView, index }) => {
       {/* Info Grid */}
       <div className="grid grid-cols-2 gap-4 mb-6">
          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Expiry</p>
-            <p className="text-sm font-bold text-gray-700">{item.expiry}</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Sensitivity</p>
+            <p className="text-sm font-bold text-gray-700">{(item.sensitivity || 'N/A').toUpperCase()}</p>
          </div>
          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Sensitivity</p>
-            <p className="text-sm font-bold text-gray-700">{item.sensitivity}</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</p>
+            <p className="text-sm font-bold text-gray-700">{(item.category || 'N/A').toUpperCase()}</p>
+         </div>
+         <div className="bg-gray-50 rounded-xl p-3 col-span-2">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Data Time</p>
+            <p className="text-sm font-bold text-gray-700">{item.createdAt}</p>
          </div>
       </div>
 
@@ -430,8 +434,8 @@ const SearchOwnerModal = ({ isOpen, onClose, searchResults, onSendRequest, searc
                             {owner.first_name.charAt(0)}
                          </div>
                          <div>
-                            <p className="font-bold text-gray-900">{owner.first_name} {owner.last_name}</p>
-                            <p className="text-xs text-gray-500">{owner.email}</p>
+                           <p className="font-bold text-gray-900">{owner.first_name} {owner.last_name}</p>
+                           <p className="text-xs text-gray-500">{owner.email}</p>
                          </div>
                       </div>
 

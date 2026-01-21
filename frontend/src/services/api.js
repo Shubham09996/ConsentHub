@@ -79,6 +79,7 @@ export const consumerAPI = {
   getDashboardStats: () => api.get('/consumer/dashboard-stats'),
   getApiKey: () => api.get('/consumer/api-key'),
   getDataOfferingsByOwner: (ownerId) => api.get(`/consumer/data-offerings/${ownerId}`),
+  getAllOwners: () => api.get('/consumer/owners'), // New endpoint to get all owners
 };
 
 export const userAPI = {
