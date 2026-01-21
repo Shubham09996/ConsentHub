@@ -152,66 +152,66 @@ To provide a visual overview of the application, screenshots of key user interfa
 ```mermaid
 erDiagram
     USERS ||--o{ DATA_RECORDS : owns
-    USERS ||--o{ consent_requests : initiates_or_receives
-    DATA_RECORDS ||--o{ consent_requests : related_to
-    consent_requests ||--o{ AUDIT_LOGS : generates
+    USERS ||--o{ CONSENT_REQUESTS : initiates_or_receives
+    DATA_RECORDS ||--o{ CONSENT_REQUESTS : related_to
+    CONSENT_REQUESTS ||--o{ AUDIT_LOGS : generates
     USERS ||--o{ DATA_OFFERINGS : provides
     DATA_OFFERINGS ||--o{ DATA_RECORDS : has
 
     USERS {
-        VARCHAR(36) id PK
-        VARCHAR(255) first_name
-        VARCHAR(255) last_name
-        VARCHAR(255) email UK
-        VARCHAR(255) password_hash
-        VARCHAR(50) role ENUM('owner', 'consumer')
-        VARCHAR(255) company
-        DATETIME created_at
-        DATETIME updated_at
-        VARCHAR(20) phone
-        VARCHAR(255) location
-        VARCHAR(255) website
-        TEXT bio
+        string id PK
+        string first_name
+        string last_name
+        string email
+        string password_hash
+        string role
+        string company
+        string phone
+        string location
+        string website
+        string bio
+        datetime created_at
+        datetime updated_at
     }
 
     DATA_RECORDS {
-        VARCHAR(36) id PK
-        VARCHAR(36) owner_id FK (USERS)
-        VARCHAR(36) data_offering_id FK (DATA_OFFERINGS)
-        JSON data_payload
-        DATETIME created_at
-        DATETIME updated_at
+        string id PK
+        string owner_id
+        string data_offering_id
+        string data_payload
+        datetime created_at
+        datetime updated_at
     }
 
     DATA_OFFERINGS {
-        VARCHAR(36) id PK
-        VARCHAR(36) owner_id FK (USERS)
-        VARCHAR(255) name
-        TEXT description
-        VARCHAR(50) sensitivity
-        VARCHAR(50) category
-        DATETIME created_at
-        DATETIME updated_at
+        string id PK
+        string owner_id
+        string name
+        string description
+        string sensitivity
+        string category
+        datetime created_at
+        datetime updated_at
     }
 
-    consent_requests {
-        VARCHAR(36) id PK
-        VARCHAR(36) consumer_id FK (USERS)
-        VARCHAR(36) owner_id FK (USERS)
-        VARCHAR(36) data_offering_id FK (DATA_OFFERINGS)
-        VARCHAR(50) status ENUM('pending', 'approved', 'rejected', 'revoked')
-        TEXT purpose
-        DATETIME created_at
-        DATETIME updated_at
+    CONSENT_REQUESTS {
+        string id PK
+        string consumer_id
+        string owner_id
+        string data_offering_id
+        string status
+        string purpose
+        datetime created_at
+        datetime updated_at
     }
 
     AUDIT_LOGS {
-        VARCHAR(36) id PK
-        VARCHAR(36) actor_id FK (USERS)
-        VARCHAR(255) action_type
-        VARCHAR(36)? target_id
-        DATETIME timestamp
-        VARCHAR(50) status
+        string id PK
+        string actor_id
+        string action_type
+        string target_id
+        string status
+        datetime timestamp
     }
 ```
 
