@@ -64,6 +64,15 @@ const revokeAccess = async (req, res) => {
     const { connectionId } = req.body;
   
     try {
+      const [request] = await db.query(
+        'SELECT * FROM consent_requests WHERE id = ? AND owner_id = ?',
+        [connectionId, req.user.id]
+      );
+
+      if (request.length === 0) {
+        return res.status(404).json({ message: 'Access request not found or you don\'t have permission.' });
+      }
+
       await db.query('UPDATE consent_requests SET status = "REVOKED" WHERE id = ?', [connectionId]);
   
       // Audit Log

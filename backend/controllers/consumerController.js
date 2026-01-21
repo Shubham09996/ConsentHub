@@ -162,4 +162,38 @@ const getDataOfferingsByOwner = async (req, res) => {
   }
 };
 
-module.exports = { searchOwner, sendRequest, getAccessList, getViewData, getConsumerDashboardStats, getConsumerApiKey, getDataOfferingsByOwner, getAllOwners };
+// @desc    Revoke Access (Consumer)
+// @route   PUT /api/consumer/revoke/:accessId
+const revokeAccess = async (req, res) => {
+  const { accessId } = req.params;
+  try {
+    // Check if the consent request exists and belongs to the consumer
+    const [request] = await db.query(
+      'SELECT * FROM consent_requests WHERE id = ? AND consumer_id = ?',
+      [accessId, req.user.id]
+    );
+
+    if (request.length === 0) {
+      return res.status(404).json({ message: 'Access request not found or you don\'t have permission.' });
+    }
+
+    // Update the status to REVOKED
+    await db.query(
+      'UPDATE consent_requests SET status = "REVOKED" WHERE id = ?',
+      [accessId]
+    );
+
+    // Log the action
+    await db.query(
+      'INSERT INTO audit_logs (id, actor_id, action_type, target_id) VALUES (?, ?, ?, ?)',
+      [uuidv4(), req.user.id, 'REVOKE_ACCESS', accessId]
+    );
+
+    res.json({ message: 'Access revoked successfully' });
+  } catch (error) {
+    console.error('Error revoking access:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { searchOwner, sendRequest, getAccessList, getViewData, getConsumerDashboardStats, getConsumerApiKey, getDataOfferingsByOwner, getAllOwners, revokeAccess };

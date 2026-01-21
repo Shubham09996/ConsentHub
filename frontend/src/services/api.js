@@ -48,7 +48,7 @@ export const ownerAPI = {
   getRequests: () => api.get('/owner/requests'), // Pending requests [cite: 23]
   getActiveConnections: () => api.get('/owner/connections'), // Active Connections
   respondToRequest: (id, status) => api.put(`/owner/request/${id}`, { status }), // Approve/Reject [cite: 24]
-  revokeAccess: (consumerId) => api.post('/owner/revoke', { consumerId }), // Revoke [cite: 25]
+  revokeAccess: (connectionId) => api.post('/owner/revoke', { connectionId }), // Revoke [cite: 25]
   getLogs: () => api.get('/owner/logs'), // Audit logs [cite: 26]
   createDataOffering: (data) => api.post('/owner/data-offerings', data),
   getDataOfferings: () => api.get('/owner/data-offerings'),
@@ -76,10 +76,11 @@ export const consumerAPI = {
   }, // Request [cite: 30]
   getAccessList: () => api.get('/consumer/access-list'),
   getData: (ownerId, dataOfferingId) => api.get(`/consumer/data/${ownerId}?dataOfferingId=${dataOfferingId}`), // View Data [cite: 31]
-  getDashboardStats: () => api.get('/consumer/dashboard-stats'),
-  getApiKey: () => api.get('/consumer/api-key'),
-  getDataOfferingsByOwner: (ownerId) => api.get(`/consumer/data-offerings/${ownerId}`),
-  getAllOwners: () => api.get('/consumer/owners'), // New endpoint to get all owners
+    getDashboardStats: () => api.get('/consumer/dashboard-stats'),
+    getApiKey: () => api.get('/consumer/api-key'),
+    getDataOfferingsByOwner: (ownerId) => api.get(`/consumer/data-offerings/${ownerId}`),
+    getAllOwners: () => api.get('/consumer/owners'), // New endpoint to get all owners
+    revokeAccess: (accessId) => api.put(`/consumer/revoke/${accessId}`),
 };
 
 export const userAPI = {

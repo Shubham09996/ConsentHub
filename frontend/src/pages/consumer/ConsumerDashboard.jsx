@@ -10,22 +10,28 @@ import { GlassCard, Button, InputGroup, Badge, Select } from '../../components/u
 import { consumerAPI } from '../../services/api';
 
 const ConsumerDashboard = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewData, setViewData] = useState(null);
-  const [filter, setFilter] = useState('all'); // 'all', 'active', 'pending'
-  const [dashboardStats, setDashboardStats] = useState({ activeConnections: 0, pendingRequests: 0, totalApiCalls: 0 });
+  // --- Local State for Dashboard Filtering ---
+  const [searchTerm, setSearchTerm] = useState(''); 
+  const [filter, setFilter] = useState('all'); // 'all', 'active', 'pending', 'revoked'
+  
+  // --- Data State ---
   const [accessList, setAccessList] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState({ activeConnections: 0, pendingRequests: 0, totalApiCalls: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [searchOwners, setSearchOwners] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [viewData, setViewData] = useState(null);
+
+  // --- Modal & API Search State ---
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(''); 
+  const [searchOwners, setSearchOwners] = useState([]); 
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  
+  // --- Request State ---
   const [requestPurpose, setRequestPurpose] = useState('');
   const [requestError, setRequestError] = useState('');
-  const [searchLoading, setSearchLoading] = useState(false); // New state for search loading
-  const [searchError, setSearchError] = useState(''); // New state for search error
-  const [ownerDataOfferings, setOwnerDataOfferings] = useState([]); // New state for data offerings of the searched owner
-  const [selectedDataOfferingId, setSelectedDataOfferingId] = useState(''); // New state for the selected data offering
+  const [selectedDataOfferingId, setSelectedDataOfferingId] = useState('');
 
   useEffect(() => {
     fetchDashboardStats();
@@ -38,7 +44,6 @@ const ConsumerDashboard = () => {
       setDashboardStats(res.data);
     } catch (err) {
       console.error('Error fetching dashboard stats:', err);
-      setError('Failed to fetch dashboard stats');
     }
   };
 
@@ -49,15 +54,15 @@ const ConsumerDashboard = () => {
       console.log("Access List API Response:", res.data);
       setAccessList(res.data.map(item => ({
         id: item.id,
-        name: `${item.first_name}`,
+        name: `${item.first_name}`, 
         email: item.email,
-        company: item.company || 'N/A',
-        status: item.status.toLowerCase(),
+        company: item.company,
+        status: item.status.toLowerCase(), 
         ownerId: item.owner_id,
         dataOfferingId: item.data_offering_id, 
-        sensitivity: item.sensitivity || 'N/A',
-        category: item.category || 'N/A',
-        createdAt: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A',
+        sensitivity: item.sensitivity,
+        category: item.category,
+        createdAt: item.created_at ? new Date(item.created_at).toLocaleDateString() : undefined,
         data: null
       })));
     } catch (err) {
@@ -68,20 +73,27 @@ const ConsumerDashboard = () => {
     }
   };
 
+  // --- Handler for "New Request" Modal Search ---
   const handleSearchOwners = async () => {
-    setSearchError(''); // Clear previous errors
+    setSearchError('');
     if (!searchQuery) {
       setSearchError('Please enter an email to search.');
       return;
     }
-    setSearchLoading(true); // Set loading true
-    console.log('Searching for owner with query:', searchQuery); // Log the search query
+    setSearchLoading(true);
     try {
       const res = await consumerAPI.searchOwner(searchQuery);
+      // Fetch offerings for each found owner
       const ownersWithOfferings = await Promise.all(res.data.map(async (owner) => {
-        const offeringsRes = await consumerAPI.getDataOfferingsByOwner(owner.id);
-        return { ...owner, dataOfferings: offeringsRes.data };
+        try {
+          const offeringsRes = await consumerAPI.getDataOfferingsByOwner(owner.id);
+          return { ...owner, dataOfferings: offeringsRes.data };
+        } catch (e) {
+          console.error(`Failed to fetch offerings for owner ${owner.id}`, e);
+          return { ...owner, dataOfferings: [] };
+        }
       }));
+      
       setSearchOwners(ownersWithOfferings);
       if (ownersWithOfferings.length === 0) {
         setSearchError('No owners found matching your search.');
@@ -107,10 +119,13 @@ const ConsumerDashboard = () => {
     try {
       await consumerAPI.requestAccess(ownerId, requestPurpose, selectedDataOfferingId);
       setIsSearchModalOpen(false);
+      // Reset Modal State
       setSearchQuery('');
+      setSearchOwners([]);
       setRequestPurpose('');
-      setSelectedDataOfferingId(''); // Clear selected offering
-      fetchAccessList(); // Refresh access list
+      setSelectedDataOfferingId('');
+      fetchAccessList(); // Refresh list to show pending request
+      fetchDashboardStats();
     } catch (err) {
       setRequestError(err.response?.data?.message || 'Failed to send request');
       console.error('Error requesting access:', err);
@@ -127,10 +142,48 @@ const ConsumerDashboard = () => {
     }
   };
 
-  // Filter Logic
+  // --- FIX START: Proper Revoke Handling with State Update ---
+  const handleRevokeAccess = async (accessId) => {
+    if (!window.confirm('Are you sure you want to revoke access?')) {
+      return;
+    }
+    try {
+      await consumerAPI.revokeAccess(accessId);
+      
+      // OPTIMISTIC UI UPDATE: Update local state immediately
+      setAccessList(prevList => 
+        prevList.map(item => 
+          item.id === accessId ? { ...item, status: 'revoked' } : item
+        )
+      );
+
+      // Also update dashboard stats lightly
+      setDashboardStats(prev => ({
+        ...prev,
+        activeConnections: Math.max(0, prev.activeConnections - 1)
+      }));
+
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to revoke access.');
+      console.error('Error revoking access:', err);
+      // Revert state if needed by refetching
+      fetchAccessList();
+    }
+  };
+  // --- FIX END ---
+
+  // --- Filter Logic ---
   const filteredList = accessList.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || item.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = 
+      item.name.toLowerCase().includes(term) || 
+      item.email.toLowerCase().includes(term) ||
+      item.company.toLowerCase().includes(term);
+      
+    // IMPORTANT: Because we updated the status to 'revoked' in handleRevokeAccess,
+    // if the filter is set to 'active', the item will disappear immediately.
     const matchesFilter = filter === 'all' || item.status === filter;
+    
     return matchesSearch && matchesFilter;
   });
 
@@ -156,24 +209,25 @@ const ConsumerDashboard = () => {
 
         {/* 2. Search & Filter Bar */}
         <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-2 items-center">
+          {/* Main List Filter Input */}
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
             <input 
               type="text"
-              placeholder="Search by name or email..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filter connections by name, email, or company..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
               className="w-full bg-gray-50 hover:bg-white focus:bg-white border-2 border-transparent focus:border-brand-500 rounded-xl py-3 pl-12 pr-4 outline-none transition-all font-medium text-gray-700"
             />
-            <button onClick={handleSearchOwners} className="absolute right-2 top-2 h-10 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-semibold">Search</button>
           </div>
           
-          <div className="flex bg-gray-100 p-1.5 rounded-xl w-full md:w-auto">
+          {/* Status Filters */}
+          <div className="flex bg-gray-100 p-1.5 rounded-xl w-full md:w-auto overflow-x-auto">
             {['all', 'active', 'pending', 'revoked'].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold capitalize transition-all ${
+                className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold capitalize transition-all whitespace-nowrap ${
                   filter === f ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -194,17 +248,22 @@ const ConsumerDashboard = () => {
               <p className="text-sm text-gray-500 font-medium">{filteredList.length} records found</p>
            </div>
 
-           {filteredList.length > 0 ? (
+           {loading ? (
+             <div className="text-center py-20"><div className="animate-spin w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full mx-auto"></div></div>
+           ) : filteredList.length > 0 ? (
              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredList.map((item, idx) => (
-                <AccessCard 
-                  key={item.id} 
-                  item={item} 
-                  onView={() => handleViewData(item.ownerId, item.dataOfferingId)} 
-                  index={idx} 
-                />
-              ))}
-            </div>
+              <AnimatePresence>
+                {filteredList.map((item, idx) => (
+                  <AccessCard 
+                    key={item.id} 
+                    item={item} 
+                    onView={() => handleViewData(item.ownerId, item.dataOfferingId)} 
+                    onRevoke={() => handleRevokeAccess(item.id)}
+                    index={idx} 
+                  />
+                ))}
+              </AnimatePresence>
+             </div>
            ) : (
              <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
@@ -223,6 +282,7 @@ const ConsumerDashboard = () => {
           )}
         </AnimatePresence>
 
+        {/* 5. Search Owner Modal (For New Requests) */}
         <SearchOwnerModal 
           isOpen={isSearchModalOpen} 
           onClose={() => setIsSearchModalOpen(false)}
@@ -236,7 +296,6 @@ const ConsumerDashboard = () => {
           requestError={requestError}
           searchLoading={searchLoading}
           searchError={searchError}
-          ownerDataOfferings={ownerDataOfferings}
           selectedDataOfferingId={selectedDataOfferingId}
           setSelectedDataOfferingId={setSelectedDataOfferingId}
         />
@@ -266,11 +325,12 @@ const StatCard = ({ label, value, icon: Icon, color, bg }) => (
   </motion.div>
 );
 
-const AccessCard = ({ item, onView, index }) => {
+const AccessCard = ({ item, onView, onRevoke, index }) => {
   const statusStyles = {
     active: { border: 'border-emerald-200', bg: 'bg-emerald-50', text: 'text-emerald-700', icon: Unlock },
     pending: { border: 'border-amber-200', bg: 'bg-amber-50', text: 'text-amber-700', icon: Clock },
     revoked: { border: 'border-red-200', bg: 'bg-red-50', text: 'text-red-700', icon: Lock },
+    rejected: { border: 'border-red-200', bg: 'bg-red-50', text: 'text-red-700', icon: X },
   };
   
   const style = statusStyles[item.status] || statusStyles.pending;
@@ -282,6 +342,7 @@ const AccessCard = ({ item, onView, index }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
       whileHover={{ y: -4 }}
+      layout // Enable animation when items are removed/added from grid
       className={`bg-white rounded-[1.5rem] p-6 border transition-all duration-300 shadow-sm hover:shadow-xl relative overflow-hidden group ${item.status === 'active' ? 'border-gray-200 hover:border-emerald-300' : 'border-gray-200'}`}
     >
       {/* Top Status Bar */}
@@ -296,8 +357,18 @@ const AccessCard = ({ item, onView, index }) => {
             <p className="text-xs text-gray-500 font-medium">{item.email}</p>
           </div>
         </div>
-        <div className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${style.bg} ${style.border} ${style.text}`}>
-           <StatusIcon size={12} /> <span className="capitalize">{item.status}</span>
+        <div className="flex items-center gap-2">
+          <div className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${style.bg} ${style.border} ${style.text}`}>
+             <StatusIcon size={12} /> <span className="capitalize">{item.status}</span>
+          </div>
+          {item.status === 'active' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRevoke(); }}
+              className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 transition-colors"
+            >
+              <X size={12} /> Revoke
+            </button>
+          )}
         </div>
       </div>
 
@@ -319,9 +390,9 @@ const AccessCard = ({ item, onView, index }) => {
 
       {/* Action Button */}
       <div className="relative z-10">
-        {item.status === 'revoked' ? (
+        {item.status === 'revoked' || item.status === 'rejected' ? (
             <button disabled className="w-full py-3 rounded-xl bg-gray-100 text-gray-400 font-bold text-sm cursor-not-allowed flex items-center justify-center gap-2">
-              <Lock size={16} /> Access Revoked
+              <Lock size={16} /> Access {item.status === 'revoked' ? 'Revoked' : 'Rejected'}
             </button>
         ) : item.status === 'pending' ? (
             <button disabled className="w-full py-3 rounded-xl bg-amber-50 text-amber-600 font-bold text-sm cursor-not-allowed flex items-center justify-center gap-2 border border-amber-100">
@@ -375,7 +446,7 @@ const DataModal = ({ data, onClose }) => (
           <div className="absolute top-0 right-0 p-4 opacity-50">
              <Database size={100} className="text-gray-50 opacity-50 -mr-4 -mt-4" />
           </div>
-          <pre className="text-gray-800 font-mono text-sm relative z-10 whitespace-pre-wrap">
+          <pre className="text-gray-800 font-mono text-sm relative z-10 whitespace-pre-wrap max-h-96 overflow-auto">
             {JSON.stringify(data.data, null, 2)}
           </pre>
         </div>
@@ -389,7 +460,7 @@ const DataModal = ({ data, onClose }) => (
   </div>
 );
 
-const SearchOwnerModal = ({ isOpen, onClose, searchResults, onSendRequest, searchQuery, setSearchQuery, handleSearch, requestPurpose, setRequestPurpose, requestError, searchLoading, searchError, ownerDataOfferings, selectedDataOfferingId, setSelectedDataOfferingId }) => {
+const SearchOwnerModal = ({ isOpen, onClose, searchResults, onSendRequest, searchQuery, setSearchQuery, handleSearch, requestPurpose, setRequestPurpose, requestError, searchLoading, searchError, selectedDataOfferingId, setSelectedDataOfferingId }) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -400,18 +471,19 @@ const SearchOwnerModal = ({ isOpen, onClose, searchResults, onSendRequest, searc
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl border border-gray-100"
+            className="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl border border-gray-100 max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-gradient-to-r from-brand-600 to-indigo-600 p-6 flex justify-between items-center">
+            <div className="bg-gradient-to-r from-brand-600 to-indigo-600 p-6 flex justify-between items-center shrink-0">
               <h3 className="font-bold text-white text-lg">New Access Request</h3>
               <button onClick={onClose} className="bg-white/10 hover:bg-white/20 p-2 rounded-full text-white transition-colors">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-8 space-y-6">
+            
+            <div className="p-8 space-y-6 overflow-y-auto">
               <div className="space-y-4">
-                 <InputGroup 
+                  <InputGroup 
                   label="Search Data Owner by Email" 
                   placeholder="owner@example.com" 
                   icon={Mail}
@@ -425,21 +497,21 @@ const SearchOwnerModal = ({ isOpen, onClose, searchResults, onSendRequest, searc
               </div>
 
               {searchResults.length > 0 && (
-                <div className="space-y-4 max-h-60 overflow-y-auto pr-2 mt-4 border-t border-gray-100 pt-4">
+                <div className="space-y-4 border-t border-gray-100 pt-4">
                   <h4 className="text-sm font-bold text-gray-700">Search Results</h4>
                   {searchResults.map(owner => (
                     <div key={owner.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
                       <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-brand-600 font-bold">
+                          <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-brand-600 font-bold">
                             {owner.first_name.charAt(0)}
-                         </div>
-                         <div>
+                          </div>
+                          <div>
                            <p className="font-bold text-gray-900">{owner.first_name} {owner.last_name}</p>
                            <p className="text-xs text-gray-500">{owner.email}</p>
-                         </div>
+                          </div>
                       </div>
 
-                      {owner.dataOfferings && owner.dataOfferings.length > 0 && (
+                      {owner.dataOfferings && owner.dataOfferings.length > 0 ? (
                         <Select
                           label="Select Data Offering"
                           value={selectedDataOfferingId}
@@ -448,11 +520,11 @@ const SearchOwnerModal = ({ isOpen, onClose, searchResults, onSendRequest, searc
                             { value: '', label: '-- Select an offering --' },
                             ...owner.dataOfferings.map(offering => ({ value: offering.id, label: offering.name }))
                           ]}
-                          required
                         />
+                      ) : (
+                        <p className="text-xs text-red-500">No data offerings available.</p>
                       )}
                       
-                      {/* Purpose Input for specific user */}
                       <InputGroup 
                         placeholder="Purpose of access (e.g. Loan Verification)" 
                         value={requestPurpose}

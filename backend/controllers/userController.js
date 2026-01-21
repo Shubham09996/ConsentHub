@@ -22,15 +22,16 @@ const getProfile = async (req, res) => {
 // @desc    Update user profile
 // @route   PUT /api/user/profile
 const updateProfile = async (req, res) => {
-  const { firstName, lastName, phone, location, bio, company, website } = req.body;
+  const { first_name, last_name, phone, location, bio, company, website } = req.body;
 
   try {
     await db.query(
       `UPDATE users SET first_name = ?, last_name = ?, phone = ?, location = ?, bio = ?, company = ?, website = ? WHERE id = ?`,
-      [firstName, lastName, phone, location, bio, company, website, req.user.id]
+      [first_name, last_name, phone, location, bio, company, website, req.user.id]
     );
     res.json({ message: 'Profile updated successfully' });
   } catch (error) {
+    console.error('Error updating profile:', error);
     res.status(500).json({ message: error.message });
   }
 };
